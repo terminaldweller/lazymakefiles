@@ -5,6 +5,9 @@ Lazy makefiles for C and C++
 # License
 It's the Unlicense so feel free to do whatever you want with the makefiles.<br/>
 
+# TODO
+Add a generic makefile for building clang stand-alone plugins.<br/>
+
 # TL;DR
 More or less the contents of a blog post about the makefiles:<br/>
 
