@@ -89,7 +89,7 @@ $(TARGET)-dbg: $(TARGET).odbg
 $(TARGET)-cov: $(TARGET).ocov
 	$(CC) $(LD_FLAGS) $^ $(COV_LD) -o $@
 
-cov:runcov
+cov: runcov
 	@llvm-profdata merge -sparse ./default.profraw -o ./default.profdata
 	@llvm-cov show $(TARGET)-cov -instr-profile=default.profdata
 
@@ -122,6 +122,9 @@ $(TARGET).a: $(TARGET).o
 runcov: $(TARGET)-cov
 	$(TARGET)-cov
 
+test: $(TARGET)
+	$(TARGET)
+
 valgrind: $(TARGET)
 	- valgrind --leak-check=yes $(TARGET)
 
@@ -132,8 +135,9 @@ clean:
 	rm -f *.o *.dis *.odbg *.ocov *~ $(TARGET) $(TARGET).so $(TARGET)-static $(TARGET)-dbg $(TARGET).a $(TARGET)-cov
 
 deepclean: clean
-	if [[ -d tags ]];then rm tags;fi
-	rm .depend
+	- rm tags
+	- rm .depend
+	- rm ./default.profraw
 
 help:
 	@echo "--all is the default target, runs $(TARGET) target"
