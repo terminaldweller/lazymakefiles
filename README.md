@@ -1,14 +1,14 @@
 # Lazy Makefiles
-
-Lazy makefiles for C and C++
+Lazy makefiles for C and C++.<br/>
 
 # License
 It's the Unlicense so feel free to do whatever you want with the makefiles.<br/>
 
 # TODO
-Add a generic makefile for building clang stand-alone plugins.<br/>
+Add a generic makefile for building clang stand-alone plugins(clang tools).<br/>
 
 # TL;DR
+You can find the original Medium post [here](https://medium.com/@thabogre/lazy-makefiles-ce1997412700).<br/>
 More or less the contents of a blog post about the makefiles:<br/>
 
 I kept finding myself needing to build some C or C++ code but I just couldn't be bothered to write a makefile from ground up. My life's too short for that. The code was either not that big of a deal or the build process was not anything complicated.<br/>
