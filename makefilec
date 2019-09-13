@@ -20,11 +20,17 @@ COV_CC= -fprofile-instr-generate -fcoverage-mapping
 COV_LD= -fprofile-instr-generate
 # BUILD_MODES are=RELEASE(default), DEBUG,ADDSAN,MEMSAN,UBSAN,FUZZ
 BUILD_MODE?=RELEASE
-OBJ_LIST:=$(patsubst %.c, %.o, $(wildcard *.c))
-ASM_LIST:=$(patsubst %.c, %.dis, $(wildcard *.c))
-WASM_LIST:=$(patsubst %.c, %.wasm, $(wildcard *.c))
-IR_LIST:=$(patsubst %.c, %.ir, $(wildcard *.c))
-JS_LIST:=$(patsubst %.c, %.js, $(wildcard *.c))
+#EXCLUSION_LIST='(\bdip)|(\bdim)'
+EXCLUSION_LIST='xxxxxx'
+OBJ_LIST:=$(patsubst %.c, %.o, $(shell find . -name '*.c' | grep -Ev $(EXCLUSION_LIST)))
+OBJ_COV_LIST:=$(patsubst %.c, %.ocov, $(shell find . -name '*.c' | grep -Ev $(EXCLUSION_LIST)))
+OBJ_DBG_LIST:=$(patsubst %.c, %.odbg, $(shell find . -name '*.c' | grep -Ev $(EXCLUSION_LIST)))
+ASM_LIST:=$(patsubst %.c, %.dis, $(shell find . -name '*.c' | grep -Ev $(EXCLUSION_LIST)))
+WASM_LIST:=$(patsubst %.c, %.wasm, $(shell find . -name '*.c' | grep -Ev $(EXCLUSION_LIST)))
+WAST_LIST:=$(patsubst %.c, %.wast, $(shell find . -name '*.c' | grep -Ev $(EXCLUSION_LIST)))
+IR_LIST:=$(patsubst %.c, %.ir, $(shell find . -name '*.c' | grep -Ev $(EXCLUSION_LIST)))
+JS_LIST:=$(patsubst %.c, %.js, $(shell find . -name '*.c' | grep -Ev $(EXCLUSION_LIST)))
+AST_LIST:=$(patsubst %.c, %.ast, $(shell find . -name '*.c' | grep -Ev $(EXCLUSION_LIST)))
 
 ifeq ($(BUILD_MODE), ADDSAN)
 ifeq ($(CC), gcc)
@@ -65,11 +71,11 @@ LD_FLAGS+=$(EXTRA_LD_FLAGS)
 
 .DEFAULT:all
 
-.PHONY:all clean help ASM SO TAGS WASM JS IR
+.PHONY:all clean help ASM SO TAGS WASM JS IR WAST A ADBG AST
 
 all:$(TARGET)
 
-everything:$(TARGET) A ASM SO $(TARGET)-static $(TARGET)-dbg TAGS $(TARGET)-cov WASM JS IR
+everything:$(TARGET) A ASM SO $(TARGET)-static $(TARGET)-dbg ADBG TAGS $(TARGET)-cov WASM JS IR WAST AST
 
 depend:.depend
 
@@ -90,16 +96,16 @@ depend:.depend
 %.ocov:%.c
 	$(CC) $(CC_FLAGS) $(COV_CC) -c $< -o $@
 
-$(TARGET): $(TARGET).o
+$(TARGET): $(OBJ_LIST)
 	$(CC) $(LD_FLAGS) $^ -o $@
 
-$(TARGET)-static: $(TARGET).o
+$(TARGET)-static: $(OBJ_LIST)
 	$(CC) $(LD_FLAGS) $^ -static -o $@
 
-$(TARGET)-dbg: $(TARGET).odbg
+$(TARGET)-dbg: $(OBJ_DBG_LIST)
 	$(CC) $(LD_FLAGS) $^ -g -o $@
 
-$(TARGET)-cov: $(TARGET).ocov
+$(TARGET)-cov: $(OBJ_COV_LIST)
 	$(CC) $(LD_FLAGS) $^ $(COV_LD) -o $@
 
 cov: runcov
@@ -116,11 +122,17 @@ SO:$(TARGET).so
 
 A:$(TARGET).a
 
+ADBG:$(TARGET).adbg
+
 IR:$(IR_LIST)
 
 WASM:$(WASM_LIST)
 
+WAST:$(WAST_LIST)
+
 JS:$(JS_LIST)
+
+AST:$(AST_LIST)
 
 TAGS:tags
 
@@ -142,14 +154,23 @@ tags:$(SRCS)
 %.wasm: %.c
 	$(CC) --compile $< --target=wasm32-unknown-unknown-wasm --output $@
 
+%.wast: %.wasm
+	wasm2wast $< > $@
+
 %.js: %.c
 	emcc $< -o $@
 
-$(TARGET).so: $(TARGET).o
+%.ast: %.c
+	$(CC) -Xclang -ast-dump -fsyntax-only $< > $@
+
+$(TARGET).so: $(OBJ_LIST)
 	$(CC) $(LD_FLAGS) $^ -shared -o $@
 
-$(TARGET).a: $(TARGET).o
-	ar rcs $(TARGET).a $(TARGET).o
+$(TARGET).a: $(OBJ_LIST)
+	ar rcs $(TARGET).a $(OBJ_LIST)
+
+$(TARGET).adbg: $(OBJ_DBG_LIST)
+	ar rcs $(TARGET).adbg $(OBJ_DBG_LIST)
 
 runcov: $(TARGET)-cov
 	$(TARGET)-cov
@@ -167,7 +188,8 @@ format:
 	- clang-format -i $(SRCS) $(HDRS)
 
 clean:
-	- rm -f *.o *.dis *.odbg *.ocov *.js *.ir *~ $(TARGET) $(TARGET).so $(TARGET)-static $(TARGET)-dbg $(TARGET).a $(TARGET)-cov
+	- rm -f *.o *.dis *.odbg *.ocov *.js *.ir *~ $(TARGET) $(TARGET).so $(TARGET)-static \
+	$(TARGET)-dbg $(TARGET).a $(TARGET)-cov $(TARGET).wasm $(TARGET).wast
 
 deepclean: clean
 	- rm tags
@@ -185,6 +207,10 @@ help:
 	@echo "--TAGS will generate tags file"
 	@echo "--BEAR will generate a compilation database"
 	@echo "--IR will generate llvm IR"
+	@echo "--JS will make the js file"
+	@echo "--AST will make the llvm ast file"
+	@echo "--WASM will make the wasm file"
+	@echo "--WAST will make the wasm text debug file"
 	@echo "--$(TARGET) builds the dynamically-linked executable"
 	@echo "--$(TARGET)-dbg will generate the debug build. BUILD_MODE should be set to DEBUG to work"
 	@echo "--$(TARGET)-static will statically link the executable to the libraries"

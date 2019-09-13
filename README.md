@@ -8,24 +8,16 @@ It's the Unlicense so feel free to do whatever you want with the makefiles.<br/>
 Add a generic makefile for building clang stand-alone plugins(clang tools).<br/>
 
 # TL;DR
-You can find the original Medium post [here](https://medium.com/@thabogre/lazy-makefiles-ce1997412700).<br/>
-More or less the contents of a blog post about the makefiles:<br/>
 
 I kept finding myself needing to build some C or C++ code but I just couldn't be bothered to write a makefile from ground up. My life's too short for that. The code was either not that big of a deal or the build process was not anything complicated.<br/>
 Yes, I'm lazy.<br/>
 The alternative to writing a makefile is just typing in gcc or clang instead of make into the terminal. I know. The horror. It's 2018. What sort of a barbarian does that?<br/>
 So I just decided to write a lazy makefile so I would never have to type in the name of my compiler of choice ever again. Mostly because that's what you do with things that you love. Forget about them until you need them. We're still talking about compilers and makefiles for your information. Don't go assuming things about my personal life.<br/>
 
-First off, you can find the makefiles [here](https://github.com/bloodstalker/lazymakefiles). They are licensed under the Unlicense. And I'm using plural because there's one for C and one for C++.<br/>
 Now that we are done with the mandatory whimsical introduction, let's talk about the contents of the makefiles.<br/>
 There are also a couple of things to note:<br/>
 * The makefiles have been written with gnu make in mind.
 * Most targets will be fine with gcc but the full functionality is achieved by using clang.<br/>
-* This is not a makefile 101.
-* I'm not going to try to copy the makefile contents here line by line. You are expected to have the makefile open while reading this.
-* I will be explaining some of the more, let's say, esoteric behaviours of make which can get the beginners confused.
-* gnu make variables are considered macros by C/C++ standards. I will use the term "variable" since it's what the gnu make documents use.
-* The makefiles are not supposed to be hands-off. I change bits here and there from project to project.<br/>
 * The makefile recognizes the following extensions: `.c` and `.cpp`. If you use different extensions, change the makefile accordingly.<br/>
 
 ## The Macros
