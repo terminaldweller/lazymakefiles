@@ -3,7 +3,11 @@ SHELL=bash
 SHELL?=bash
 CC=clang
 CC?=clang
+ifdef OS
+CC_FLAGS=
+else
 CC_FLAGS=-fpic
+endif
 CC_EXTRA?=
 CTAGS_I_PATH?=./
 LD_FLAGS=
@@ -71,7 +75,7 @@ LD_FLAGS+=$(EXTRA_LD_FLAGS)
 
 .DEFAULT:all
 
-.PHONY:all clean help ASM SO TAGS WASM JS IR WAST A ADBG AST
+.PHONY:all clean help ASM SO TAGS WASM JS IR WAST A ADBG AST cppcheck
 
 all:$(TARGET)
 
@@ -152,10 +156,10 @@ tags:$(SRCS)
 	$(CC) -emit-llvm -S -o $@ $<
 
 %.wasm: %.c
-	$(CC) --compile $< --target=wasm32-unknown-unknown-wasm --output $@
+	emcc $< -o $@
 
 %.wast: %.wasm
-	wasm2wast $< > $@
+	wasm2wat $< > $@
 
 %.js: %.c
 	emcc $< -o $@
@@ -184,12 +188,15 @@ run: $(TARGET)
 valgrind: $(TARGET)
 	- valgrind --track-origins=yes --leak-check=full --show-leak-kinds=all $(TARGET)
 
+cppcheck:
+	cppcheck $(SRCS)
+
 format:
 	- clang-format -i $(SRCS) $(HDRS)
 
 clean:
 	- rm -f *.o *.dis *.odbg *.ocov *.js *.ir *~ $(TARGET) $(TARGET).so $(TARGET)-static \
-	$(TARGET)-dbg $(TARGET).a $(TARGET)-cov $(TARGET).wasm $(TARGET).wast
+	$(TARGET)-dbg $(TARGET).a $(TARGET)-cov *.wasm *.wast $(TARGET).adbg *.ast
 
 deepclean: clean
 	- rm tags

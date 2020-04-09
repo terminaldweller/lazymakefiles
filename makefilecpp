@@ -3,7 +3,11 @@ SHELL=bash
 SHELL?=bash
 CXX=clang++
 CXX?=clang++
+ifdef OS
+CXX_FLAGS=-std=c++17
+else
 CXX_FLAGS=-std=c++17 -fpic
+endif
 CXX_EXTRA?=
 CTAGS_I_PATH?=./
 LD_FLAGS= -include-pch header.hpp.gch
@@ -71,7 +75,7 @@ LD_FLAGS+=$(EXTRA_LD_FLAGS)
 
 .DEFAULT:all
 
-.PHONY:all clean help ASM SO TAGS WASM JS exe IR WAST A ADBG AST
+.PHONY:all clean help ASM SO TAGS WASM JS exe IR WAST A ADBG AST cppcheck
 
 all:exe
 
@@ -87,7 +91,7 @@ depend:.depend
 
 -include ./.depend
 
-.cpp.o:
+.cpp.o: header.hpp.gch
 	$(CXX) $(CXX_FLAGS) -c $< -o $@
 
 %.odbg:%.cpp
@@ -157,10 +161,10 @@ tags:$(SRCS)
 	$(CXX) -emit-llvm -S -o $@ $<
 
 %.wasm: %.cpp
-	$(CXX) --compile $< --target=wasm32-unknown-unknown-wasm --output $@
+	em++ $< -o $@
 
 %.wast: %.wasm
-	wasm2wast $< > $@
+	wasm2wat $< > $@
 
 %.js: %.cpp
 	em++ $< -o $@
@@ -189,12 +193,15 @@ run: $(TARGET)
 valgrind: $(TARGET)
 	- valgrind --track-origins=yes --leak-check=full --show-leak-kinds=all $(TARGET)
 
+cppcheck:
+	cppcheck $(SRCS)
+
 format:
 	- clang-format -i $(SRCS) $(HDRS)
 
 clean:
-	- rm -f *.o *.dis *.odbg *.ocov *.js *.ir *~ $(TARGET) $(TARGET).so \
-	$(TARGET)-static $(TARGET)-dbg $(TARGET).a $(TARGET)-cov $(TARGET).wasm $(TARGET).wast
+	- rm -f *.o *.dis *.odbg *.ocov *.js *.ir *~ $(TARGET) $(TARGET).so $(TARGET)-static \
+		$(TARGET)-dbg $(TARGET).a $(TARGET)-cov *.wasm *.wast $(TARGET).adbg *.ast
 
 deepclean: clean
 	- rm tags
