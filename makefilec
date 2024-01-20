@@ -29,7 +29,7 @@ EXCLUSION_LIST='xxxxxx'
 OBJ_LIST:=$(patsubst %.c, %.o, $(shell find . -name '*.c' | grep -Ev $(EXCLUSION_LIST)))
 OBJ_COV_LIST:=$(patsubst %.c, %.ocov, $(shell find . -name '*.c' | grep -Ev $(EXCLUSION_LIST)))
 OBJ_DBG_LIST:=$(patsubst %.c, %.odbg, $(shell find . -name '*.c' | grep -Ev $(EXCLUSION_LIST)))
-ASM_LIST:=$(patsubst %.c, %.dis, $(shell find . -name '*.c' | grep -Ev $(EXCLUSION_LIST)))
+ASM_LIST:=$(patsubst %.c, %.s, $(shell find . -name '*.c' | grep -Ev $(EXCLUSION_LIST)))
 WASM_LIST:=$(patsubst %.c, %.wasm, $(shell find . -name '*.c' | grep -Ev $(EXCLUSION_LIST)))
 WAST_LIST:=$(patsubst %.c, %.wast, $(shell find . -name '*.c' | grep -Ev $(EXCLUSION_LIST)))
 IR_LIST:=$(patsubst %.c, %.ir, $(shell find . -name '*.c' | grep -Ev $(EXCLUSION_LIST)))
@@ -75,11 +75,11 @@ LD_FLAGS+=$(EXTRA_LD_FLAGS)
 
 .DEFAULT:all
 
-.PHONY:all clean help ASM SO TAGS WASM JS IR WAST A ADBG AST cppcheck
+.PHONY:all clean help ASM SO TAGS WASM JS IR WAST A ADBG AST cppcheck DOCKER
 
 all:$(TARGET)
 
-everything:$(TARGET) A ASM SO $(TARGET)-static $(TARGET)-dbg ADBG TAGS $(TARGET)-cov WASM JS IR WAST AST
+everything:$(TARGET) A ASM SO $(TARGET)-static $(TARGET)-dbg ADBG TAGS $(TARGET)-cov WASM JS IR WAST AST DOCKER
 
 depend:.depend
 
@@ -142,15 +142,16 @@ TAGS:tags
 
 #https://github.com/rizsotto/Bear
 BEAR: clean
-	bear make
+	bear -- make
 
 tags:$(SRCS)
 	$(shell $(CC) -c -I $(CTAGS_I_PATH) -M $(SRCS)|\
 		sed -e 's/[\\ ]/\n/g'|sed -e '/^$$/d' -e '/\.o:[ \t]*$$/d'|\
 		ctags -L - --c++-kinds=+p --fields=+iaS --extra=+q)
 
-%.dis: %.o
-	objdump -r -d -M intel -S $< > $@
+%.s: %.c
+	$(CC) -S $< -o $@
+	# objdump -r -d -M intel -S $< > $@
 
 %.ir: %.c
 	$(CC) -emit-llvm -S -o $@ $<
@@ -162,7 +163,7 @@ tags:$(SRCS)
 	wasm2wat $< > $@
 
 %.js: %.c
-	emcc $< -o $@
+	emcc $< -s FORCE_FILESYSTEM=1 -s EXIT_RUNTIME=1 -o $@
 
 %.ast: %.c
 	$(CC) -Xclang -ast-dump -fsyntax-only $< > $@
@@ -177,25 +178,31 @@ $(TARGET).adbg: $(OBJ_DBG_LIST)
 	ar rcs $(TARGET).adbg $(OBJ_DBG_LIST)
 
 runcov: $(TARGET)-cov
-	$(TARGET)-cov
+	"./$(TARGET)-cov"
 
 test: $(TARGET)
-	$(TARGET)
+	"./$(TARGET)"
 
 run: $(TARGET)
-	$(TARGET)
+	"./$(TARGET)"
 
 valgrind: $(TARGET)
-	- valgrind --track-origins=yes --leak-check=full --show-leak-kinds=all $(TARGET)
+	- valgrind --track-origins=yes --leak-check=full --show-leak-kinds=all "./$(TARGET)"
 
 cppcheck:
 	cppcheck $(SRCS)
 
+rundbg: $(TARGET)-dbg
+	gdb --batch --command=./debug.dbg --args "./$(TARGET)-dbg"
+
 format:
 	- clang-format -i $(SRCS) $(HDRS)
 
+DOCKER: Dockerfile
+	docker build -t proto ./
+
 clean:
-	- rm -f *.o *.dis *.odbg *.ocov *.js *.ir *~ $(TARGET) $(TARGET).so $(TARGET)-static \
+	- rm -f *.o *.s *.odbg *.ocov *.js *.ir *~ $(TARGET) $(TARGET).so $(TARGET)-static \
 	$(TARGET)-dbg $(TARGET).a $(TARGET)-cov *.wasm *.wast $(TARGET).adbg *.ast
 
 deepclean: clean
